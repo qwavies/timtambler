@@ -1,17 +1,14 @@
 use std::fs;
 use toml;
+use serde::Deserialize;
 
-pub struct Timetable {
-    pub classes: Vec<Class>,
-    pub assignments: Vec<Assignment>,
-    pub format: Format,
-
-}
+#[derive(Deserialize)]
 pub struct Format {
     pub class_format: String,
     pub assignment_format: String,
 }
 
+#[derive(Deserialize)]
 pub struct Class {
     pub name: String,
     pub day: String,
@@ -20,8 +17,25 @@ pub struct Class {
     pub location: String,
 }
 
+#[derive(Deserialize)]
 pub struct Assignment {
     pub name: String,
     pub points: String,
     pub due_date: String,
+}
+
+#[derive(Deserialize)]
+pub struct Timetable {
+    pub class: Vec<Class>,
+    pub assignment: Vec<Assignment>,
+    pub format: Format,
+}
+
+impl Timetable {
+    pub fn read_toml_file(file: &str) -> Timetable {
+        let content = fs::read_to_string(file).expect("Couldn't read toml file");
+        let timetable: Timetable = toml::de::from_str(&content).expect("Couldn't parse toml file");
+
+        timetable
+    }
 }
