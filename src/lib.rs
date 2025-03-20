@@ -1,6 +1,12 @@
 use std::fs;
 use toml;
+use chrono::{ DateTime, Local };
 use serde::Deserialize;
+
+pub enum TimeState {
+    Past,
+    Future,
+}
 
 #[derive(Deserialize)]
 pub struct Format {
@@ -55,7 +61,7 @@ impl Timetable {
 
     pub fn list_assignments(&self) {
         for assignment in &self.assignment {
-            // addd functionality to find how long until next class
+            // addd functionality to find how long until assignment due
             let format_string = self.format.assignment_format
                 .replace("{name}", &assignment.name)
                 .replace("{points}", &assignment.points)
@@ -64,4 +70,52 @@ impl Timetable {
             println!("{}", format_string);
         }
     }
+
+    pub fn calculate_time_until(time: &str) -> (String, TimeState) {
+        // returns the number of seconds between the given date and the current time
+        // negative numbers represent in the past
+        //converts all times to Unix Epoch time and compares them
+        let time_unix = DateTime::parse_from_rfc3339(time)
+            .expect("Invalid rfc3339 time stamp")
+            .timestamp();
+        let current_time_unix = Local::now()
+            .timestamp();
+        let time_difference = time_unix - current_time_unix;
+
+        format_time(time_difference)
+    }
+}
+
+fn format_time(raw_seconds: i64) -> (String, TimeState) {
+    let current_time_state = if raw_seconds >= 0 {
+        TimeState::Future
+    } else {
+        TimeState::Past
+    };
+
+    let total_seconds = raw_seconds.abs();
+    let weeks = total_seconds / (7 * 24 * 60 * 60);
+    let days = (total_seconds % (7 * 24 * 60 * 60)) / (24 * 60 * 60);
+    let hours = (total_seconds % (24 * 60 * 60)) / (60 * 60);
+    let minutes = (total_seconds % (60 * 60)) / 60;
+    let seconds = total_seconds % 60; 
+
+    let mut time_formats = Vec::new();
+    if weeks > 0 {
+        time_formats.push(format!("{} weeks", weeks));
+    }
+    if days > 0 {
+        time_formats.push(format!("{} days", days));
+    }
+    if hours > 0 {
+        time_formats.push(format!("{} hours", hours));
+    }
+    if minutes > 0 {
+        time_formats.push(format!("{} minutes", minutes));
+    }
+    if seconds > 0 || time_formats.is_empty() {
+        time_formats.push(format!("{} seconds", seconds));
+    }
+
+    (time_formats.join(", "), current_time_state)
 }

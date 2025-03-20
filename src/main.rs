@@ -3,6 +3,7 @@ use timtambler::Timetable;
 fn main() {
     let timetable: Timetable = Timetable::read_toml_file("config.toml");
 
-    timetable.list_classes();
-    timetable.list_assignments();
+    for assignment in timetable.assignment {
+        println!("{}",Timetable::calculate_time_until(&assignment.due_date).0);
+    }
 }

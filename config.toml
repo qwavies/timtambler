@@ -31,9 +31,9 @@ points = "10%"
 # Format is specifically called RFC 3339
 # or just look it up on toml.io
 #          YYYY-MM-DD HH:MM:SS
-due_date = "2025-03-28 23:55:00"
+due_date = "2025-03-28T23:55:00Z"
 
 [[assignment]]
 name = "assignment 2"
 points = "15%"
-due_date = "2025-03-28 23:55:00"
+due_date = "2025-03-28T23:55:00Z"
