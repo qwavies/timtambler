@@ -1,7 +1,8 @@
 # Not implemented yet but wanted to lay out a structure on how to format (eventually)
 # Taking inspiration from starship
 [format]
-class_format = "{name} in {time} at {location}"
+in_class_format = "{name} in {time} at {location}"
+next_class_format = "currently in {name} until {time} at {location}"
 assignment_format = "{name} worth {points} due in {time}"
 assignment_overdue_format = "{name} worth {points} due {time} ago"
 assignment_time_format = "%Y-%m-%d %H:%M:%S"

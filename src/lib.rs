@@ -1,6 +1,6 @@
 use std::fs;
 use toml;
-use chrono::{ DateTime, Local, NaiveDateTime };
+use chrono::{ Local, NaiveDateTime };
 use serde::Deserialize;
 
 pub enum TimeState {
@@ -10,7 +10,8 @@ pub enum TimeState {
 
 #[derive(Deserialize)]
 pub struct Format {
-    pub class_format: String,
+    pub in_class_format: String,
+    pub next_class_format: String,
     pub assignment_format: String,
     pub assignment_overdue_format: String,
     pub assignment_time_format: String,
@@ -49,13 +50,26 @@ impl Timetable {
 
     pub fn list_classes(&self) {
         for class in &self.class {
-            // addd functionality to find how long until next class
-            let format_string = self.format.class_format
-                .replace("{name}", &class.name)
-                .replace("{day}", &class.day)
-                .replace("{start_time}", &class.start_time)
-                .replace("{end_time}", &class.end_time)
-                .replace("{location}", &class.location);
+            let start_time_unix = class.get_start_time();
+            let end_time_unix = class.get_end_time();
+
+            let format_string = if end_time_unix > start_time_unix {
+                &self.format.in_class_format
+            } else {
+                &self.format.next_class_format
+            }.replace("{name}", &class.name)
+            .replace("{day}", &class.day)
+            .replace("{start_time}", &class.start_time)
+            .replace("{end_time}", &class.end_time)
+            .replace("{location}", &class.location)
+            .replace(
+                "{time}",
+                if end_time_unix > start_time_unix {
+                    &end_time_unix
+                } else {
+                    &start_time_unix
+                }
+                );
 
             println!("{}", format_string);
         }
@@ -63,7 +77,6 @@ impl Timetable {
 
     pub fn list_assignments(&self) {
         for assignment in &self.assignment {
-            // addd functionality to find how long until assignment due
             let (time, timestate) = assignment.get_time(&self.format.assignment_time_format);
 
             let format_string = match timestate {
@@ -88,16 +101,63 @@ impl Assignment {
 
         // positive times indicate future, negative times indicate past
         let time_difference = due_date_unix - current_time_unix;
+
+        let current_time_state = if time_difference >= 0 {
+            TimeState::Future
+        } else {
+            TimeState::Past
+        };
+
+        let formatted_time = format_time(time_difference.abs());
+
+        (formatted_time, current_time_state)
+    }
+}
+
+impl Class {
+    pub fn get_start_time(&self) -> String {
+        let start_time_unix = next_occurance_of_day_time_unix(&self.day, &self.start_time);
+        let current_time_unix = Local::now().timestamp();
+
+        let time_difference = start_time_unix - current_time_unix;
+        format_time(time_difference)
+    }
+    pub fn get_end_time(&self) -> String {
+        let end_time_unix = next_occurance_of_day_time_unix(&self.day, &self.end_time);
+        let current_time_unix = Local::now().timestamp();
+
+        let time_difference = end_time_unix - current_time_unix;
         format_time(time_difference)
     }
 }
 
-fn format_time(raw_seconds: i64) -> (String, TimeState) {
-    let current_time_state = if raw_seconds >= 0 {
-        TimeState::Future
-    } else {
-        TimeState::Past
+fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
+    let current_time_unix = Local::now().timestamp();
+    let target_weekday = match weekday.to_lowercase().as_str() {
+        "monday" => 0,
+        "tuesday" => 1,
+        "wednesday" => 2,
+        "thursday" => 3,
+        "friday" => 4,
+        "saturday" => 5,
+        "sunday" => 6,
+        _ => panic!("Invalid day of the week. {} is not a day of the week", weekday)
     };
+    let current_weekday = ((current_time_unix / 86400) + 4) % 7;
+    let day_difference = (target_weekday - current_weekday) % 7;
+
+    let current_seconds = current_time_unix / 86400;
+    let target_hour_and_minutes: Vec<&str> = time.split(":").collect();
+    let target_hours: i64 = target_hour_and_minutes[0].parse().unwrap();
+    let target_minutes: i64 = target_hour_and_minutes[1].parse().unwrap();
+    let target_seconds = (target_hours * 3600) + (target_minutes * 60);
+    // seconds seconds_difference can be negative
+    let seconds_difference = target_seconds - current_seconds;
+
+    let final_time_unix = current_time_unix + (day_difference * 86400) + seconds_difference;
+    final_time_unix
+}
+fn format_time(raw_seconds: i64) -> String {
 
     let total_seconds = raw_seconds.abs();
     let weeks = total_seconds / (7 * 24 * 60 * 60);
@@ -123,5 +183,5 @@ fn format_time(raw_seconds: i64) -> (String, TimeState) {
         time_formats.push(format!("{} seconds", seconds));
     }
 
-    (time_formats.join(", "), current_time_state)
+    time_formats.join(", ")
 }
