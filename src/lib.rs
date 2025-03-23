@@ -1,6 +1,6 @@
 use std::fs;
 use toml;
-use chrono::{ DateTime, Local };
+use chrono::{ DateTime, Local, NaiveDateTime };
 use serde::Deserialize;
 
 pub enum TimeState {
@@ -12,6 +12,8 @@ pub enum TimeState {
 pub struct Format {
     pub class_format: String,
     pub assignment_format: String,
+    pub assignment_overdue_format: String,
+    pub assignment_time_format: String,
 }
 
 #[derive(Deserialize)]
@@ -62,26 +64,30 @@ impl Timetable {
     pub fn list_assignments(&self) {
         for assignment in &self.assignment {
             // addd functionality to find how long until assignment due
-            let format_string = self.format.assignment_format
-                .replace("{name}", &assignment.name)
-                .replace("{points}", &assignment.points)
-                .replace("{due_date}", &assignment.due_date);
+            let (time, timestate) = assignment.get_time(&self.format.assignment_time_format);
+
+            let format_string = match timestate {
+                TimeState::Past => &self.format.assignment_overdue_format,
+                TimeState::Future => &self.format.assignment_format,
+            }.replace("{name}", &assignment.name)
+            .replace("{points}", &assignment.points)
+            .replace("{due_date}", &assignment.due_date)
+            .replace("{time}", &time);
 
             println!("{}", format_string);
         }
     }
+}
 
-    pub fn calculate_time_until(time: &str) -> (String, TimeState) {
-        // returns the number of seconds between the given date and the current time
-        // negative numbers represent in the past
-        //converts all times to Unix Epoch time and compares them
-        let time_unix = DateTime::parse_from_rfc3339(time)
-            .expect("Invalid rfc3339 time stamp")
-            .timestamp();
-        let current_time_unix = Local::now()
-            .timestamp();
-        let time_difference = time_unix - current_time_unix;
+impl Assignment {
+    pub fn get_time(&self, format: &str) -> (String, TimeState) {
+        let due_date_unix = NaiveDateTime::parse_from_str(&self.due_date, format)
+            .expect("Invalid date format provided")
+            .and_utc().timestamp();
+        let current_time_unix = Local::now().timestamp();
 
+        // positive times indicate future, negative times indicate past
+        let time_difference = due_date_unix - current_time_unix;
         format_time(time_difference)
     }
 }
