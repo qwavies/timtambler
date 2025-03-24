@@ -1,6 +1,6 @@
 use std::fs;
 use toml;
-use chrono::{ Local, NaiveDateTime };
+use chrono::{ Datelike, Local, NaiveDateTime, Weekday };
 use serde::Deserialize;
 
 pub enum TimeState {
@@ -50,8 +50,10 @@ impl Timetable {
 
     pub fn list_classes(&self) {
         for class in &self.class {
-            let start_time_unix = class.get_start_time();
-            let end_time_unix = class.get_end_time();
+            let start_time_unix: i64 = next_occurance_of_day_time_unix(&class.day, &class.start_time);
+            let end_time_unix: i64 = next_occurance_of_day_time_unix(&class.day, &class.end_time);
+            let start_time_format: String = class.get_start_time();
+            let end_time_format: String = class.get_end_time();
 
             let format_string = if end_time_unix > start_time_unix {
                 &self.format.in_class_format
@@ -65,9 +67,9 @@ impl Timetable {
             .replace(
                 "{time}",
                 if end_time_unix > start_time_unix {
-                    &end_time_unix
+                    &end_time_format
                 } else {
-                    &start_time_unix
+                    &start_time_format
                 }
                 );
 
@@ -132,7 +134,27 @@ impl Class {
 }
 
 fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
-    let current_time_unix = Local::now().timestamp();
+    let current_time = Local::now();
+    let current_time_unix = current_time.timestamp();
+    let current_hour_and_minutes: String = current_time.time().to_string();
+    let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes.split(":").collect();
+    let current_hours: i64 = current_hour_and_minutes[0].parse().unwrap();
+    let current_minutes: i64 = current_hour_and_minutes[1].parse().unwrap();
+    let current_seconds = (current_hours * 60 * 60) + (current_minutes * 60);
+    let current_weekday = match current_time.weekday() {
+        Weekday::Mon => 0,
+        Weekday::Tue => 1,
+        Weekday::Wed => 2,
+        Weekday::Thu => 3,
+        Weekday::Fri => 4,
+        Weekday::Sat => 5,
+        Weekday::Sun => 6,
+    };
+
+    let target_hour_and_minutes: Vec<&str> = time.split(":").collect();
+    let target_hours: i64 = target_hour_and_minutes[0].parse().unwrap();
+    let target_minutes: i64 = target_hour_and_minutes[1].parse().unwrap();
+    let target_seconds = (target_hours * 60 * 60) + (target_minutes * 60);
     let target_weekday = match weekday.to_lowercase().as_str() {
         "monday" => 0,
         "tuesday" => 1,
@@ -143,22 +165,21 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
         "sunday" => 6,
         _ => panic!("Invalid day of the week. {} is not a day of the week", weekday)
     };
-    let current_weekday = ((current_time_unix / 86400) + 4) % 7;
-    let day_difference = (target_weekday - current_weekday) % 7;
 
-    let current_seconds = current_time_unix / 86400;
-    let target_hour_and_minutes: Vec<&str> = time.split(":").collect();
-    let target_hours: i64 = target_hour_and_minutes[0].parse().unwrap();
-    let target_minutes: i64 = target_hour_and_minutes[1].parse().unwrap();
-    let target_seconds = (target_hours * 3600) + (target_minutes * 60);
-    // seconds seconds_difference can be negative
+    let mut day_difference = (target_weekday - current_weekday) % 7;
+    // seconds_difference can be negative
     let seconds_difference = target_seconds - current_seconds;
+
+    // edge case where its the same day but past the current time
+    if (day_difference == 0) && (seconds_difference <= 0) {
+        day_difference = 7;
+    }
 
     let final_time_unix = current_time_unix + (day_difference * 86400) + seconds_difference;
     final_time_unix
 }
-fn format_time(raw_seconds: i64) -> String {
 
+fn format_time(raw_seconds: i64) -> String {
     let total_seconds = raw_seconds.abs();
     let weeks = total_seconds / (7 * 24 * 60 * 60);
     let days = (total_seconds % (7 * 24 * 60 * 60)) / (24 * 60 * 60);
