@@ -157,10 +157,15 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
     let current_time = Local::now();
     let current_time_unix = current_time.timestamp();
     let current_hour_and_minutes: String = current_time.time().to_string();
-    let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes.split(":").collect();
+    //let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes
+    //    .split(":").collect();
+    let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes
+        .split(|delimiter| delimiter == ':' || delimiter == '.').collect();
     let current_hours: i64 = current_hour_and_minutes[0].parse().unwrap();
     let current_minutes: i64 = current_hour_and_minutes[1].parse().unwrap();
-    let current_seconds = (current_hours * 60 * 60) + (current_minutes * 60);
+    let current_seconds: i64 = current_hour_and_minutes[2].parse().unwrap();
+    //let current_total_seconds = (current_hours * 60 * 60) + (current_minutes * 60);
+    let current_total_seconds = (current_hours * 60 * 60) + (current_minutes * 60) + current_seconds;
     let current_weekday = match current_time.weekday() {
         Weekday::Mon => 0,
         Weekday::Tue => 1,
@@ -174,7 +179,7 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
     let target_hour_and_minutes: Vec<&str> = time.split(":").collect();
     let target_hours: i64 = target_hour_and_minutes[0].parse().unwrap();
     let target_minutes: i64 = target_hour_and_minutes[1].parse().unwrap();
-    let target_seconds = (target_hours * 60 * 60) + (target_minutes * 60);
+    let target_total_seconds = (target_hours * 60 * 60) + (target_minutes * 60);
     let target_weekday = match weekday.to_lowercase().as_str() {
         "monday" => 0,
         "tuesday" => 1,
@@ -191,7 +196,7 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
 
     let mut day_difference = (((target_weekday - current_weekday) % 7) + 7) % 7;
     // seconds_difference can be negative
-    let seconds_difference = target_seconds - current_seconds;
+    let seconds_difference = target_total_seconds - current_total_seconds;
 
     // edge case where its the same day but past the current time
     if (day_difference == 0) && (seconds_difference <= 0) {
