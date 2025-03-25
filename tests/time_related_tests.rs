@@ -1,4 +1,4 @@
 #[test]
 fn testing_tests() {
-    assert_eq!(2+2,4);
+    assert_eq!(2 + 2, 4);
 }

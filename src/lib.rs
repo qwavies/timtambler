@@ -1,7 +1,7 @@
+use chrono::{Datelike, Local, NaiveDateTime, Weekday};
+use serde::Deserialize;
 use std::fs;
 use toml;
-use chrono::{ Datelike, Local, NaiveDateTime, Weekday };
-use serde::Deserialize;
 
 pub enum TimeState {
     Past,
@@ -44,61 +44,56 @@ impl Timetable {
     pub fn read_toml_file(file: &str) -> Timetable {
         let content = fs::read_to_string(file).expect("Couldn't read toml file");
         let timetable: Timetable = toml::de::from_str(&content).expect("Couldn't parse toml file");
-
         timetable
     }
 
-    pub fn list_classes(&self) {
+    pub fn list_classes(&self) -> Vec<String> {
+        let mut output_classes: Vec<(String, i64)> = Vec::new();
         for class in &self.class {
             let start_time_unix: i64 = next_occurance_of_day_time_unix(&class.day, &class.start_time);
             let end_time_unix: i64 = next_occurance_of_day_time_unix(&class.day, &class.end_time);
-            let start_time_format: String = class.get_start_time();
-            let end_time_format: String = class.get_end_time();
 
-            let format_string = if end_time_unix > start_time_unix {
-                &self.format.in_class_format
+            let (format_string, in_class, relevant_time_unix) = if end_time_unix > start_time_unix {
+                (&self.format.in_class_format, false, end_time_unix)
             } else {
-                &self.format.next_class_format
-            }.replace("{name}", &class.name)
-            .replace("{day}", &class.day)
-            .replace("{start_time}", &class.start_time)
-            .replace("{end_time}", &class.end_time)
-            .replace("{location}", &class.location)
-            .replace(
-                "{time}",
-                if end_time_unix > start_time_unix {
-                    &end_time_format
-                } else {
-                    &start_time_format
-                }
-                );
+                (&self.format.next_class_format, true, start_time_unix)
+            };
 
-            println!("{}", format_string);
+            let format_string = class.format_class_string(format_string.to_string(), in_class);
+            output_classes.push((format_string, relevant_time_unix));
         }
+        output_classes.sort_by_key(|time| time.1);
+        let output_classes: Vec<String> = output_classes
+            .into_iter()
+            .map(|(formatted_string,_)| formatted_string)
+            .collect();
+
+        output_classes
     }
 
-    pub fn list_assignments(&self) {
+    pub fn list_assignments(&self) -> Vec<String> {
+        let mut output_assignments: Vec<(String, i64)> = Vec::new();
         for assignment in &self.assignment {
-            let (time, timestate) = assignment.get_time(&self.format.assignment_time_format);
-
-            let format_string = match timestate {
-                TimeState::Past => &self.format.assignment_overdue_format,
-                TimeState::Future => &self.format.assignment_format,
-            }.replace("{name}", &assignment.name)
-            .replace("{points}", &assignment.points)
-            .replace("{due_date}", &assignment.due_date)
-            .replace("{time}", &time);
-
-            println!("{}", format_string);
+            let (time, time_unix, timestate) = assignment.get_time(&self.format.assignment_time_format);
+            let format_string = assignment.format_assignment_string(time, timestate, &self.format);
+            output_assignments.push((format_string,time_unix))
         }
+        output_assignments.sort_by_key(|time| time.1);
+        let output_assignments: Vec<String> = output_assignments
+            .into_iter()
+            .map(|(formatted_string,_)| formatted_string)
+            .collect();
+
+        output_assignments
     }
 }
 
 impl Assignment {
-    pub fn get_time(&self, format: &str) -> (String, TimeState) {
+    pub fn get_time(&self, format: &str) -> (String, i64, TimeState) {
         let due_date_unix = NaiveDateTime::parse_from_str(&self.due_date, format)
             .expect("Invalid date format provided")
-            .and_utc().timestamp();
+            .and_utc()
+            .timestamp();
         let current_time_unix = Local::now().timestamp();
 
         // positive times indicate future, negative times indicate past
@@ -112,7 +107,18 @@ impl Assignment {
 
         let formatted_time = format_time(time_difference.abs());
 
-        (formatted_time, current_time_state)
+        (formatted_time, due_date_unix, current_time_state)
+    }
+
+    pub fn format_assignment_string(&self, time: String, timestate: TimeState, format: &Format) -> String {
+        let format_string = match timestate {
+            TimeState::Past => &format.assignment_overdue_format,
+            TimeState::Future => &format.assignment_format,
+        }.replace("{name}", &self.name)
+        .replace("{points}", &self.points)
+        .replace("{due_date}", &self.due_date)
+        .replace("{time}", &time);
+        format_string
     }
 }
 
@@ -130,6 +136,20 @@ impl Class {
 
         let time_difference = end_time_unix - current_time_unix;
         format_time(time_difference)
+    }
+
+    pub fn format_class_string(&self, format_string: String, in_class: bool) -> String {
+        let time_format = match in_class {
+            true => &self.get_end_time(),
+            false => &self.get_start_time(),
+        }; 
+        format_string
+            .replace("{name}", &self.name)
+            .replace("{day}", &self.day)
+            .replace("{start_time}", &self.start_time)
+            .replace("{end_time}", &self.end_time)
+            .replace("{location}", &self.location)
+            .replace("{time}", time_format)
     }
 }
 
@@ -163,10 +183,13 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
         "friday" => 4,
         "saturday" => 5,
         "sunday" => 6,
-        _ => panic!("Invalid day of the week. {} is not a day of the week", weekday)
+        _ => panic!(
+            "Invalid day of the week. {} is not a day of the week",
+            weekday
+        ),
     };
 
-    let mut day_difference = (target_weekday - current_weekday) % 7;
+    let mut day_difference = (((target_weekday - current_weekday) % 7) + 7) % 7;
     // seconds_difference can be negative
     let seconds_difference = target_seconds - current_seconds;
 
@@ -185,7 +208,7 @@ fn format_time(raw_seconds: i64) -> String {
     let days = (total_seconds % (7 * 24 * 60 * 60)) / (24 * 60 * 60);
     let hours = (total_seconds % (24 * 60 * 60)) / (60 * 60);
     let minutes = (total_seconds % (60 * 60)) / 60;
-    let seconds = total_seconds % 60; 
+    let seconds = total_seconds % 60;
 
     let mut time_formats = Vec::new();
     if weeks > 0 {
