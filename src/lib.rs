@@ -157,14 +157,11 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
     let current_time = Local::now();
     let current_time_unix = current_time.timestamp();
     let current_hour_and_minutes: String = current_time.time().to_string();
-    //let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes
-    //    .split(":").collect();
     let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes
         .split(|delimiter| delimiter == ':' || delimiter == '.').collect();
     let current_hours: i64 = current_hour_and_minutes[0].parse().unwrap();
     let current_minutes: i64 = current_hour_and_minutes[1].parse().unwrap();
     let current_seconds: i64 = current_hour_and_minutes[2].parse().unwrap();
-    //let current_total_seconds = (current_hours * 60 * 60) + (current_minutes * 60);
     let current_total_seconds = (current_hours * 60 * 60) + (current_minutes * 60) + current_seconds;
     let current_weekday = match current_time.weekday() {
         Weekday::Mon => 0,
@@ -217,19 +214,39 @@ fn format_time(raw_seconds: i64) -> String {
 
     let mut time_formats = Vec::new();
     if weeks > 0 {
-        time_formats.push(format!("{} weeks", weeks));
+        if weeks == 1 {
+            time_formats.push(format!("{} week", weeks));
+        } else {
+            time_formats.push(format!("{} weeks", weeks));
+        }
     }
     if days > 0 {
-        time_formats.push(format!("{} days", days));
+        if days == 1 {
+            time_formats.push(format!("{} day", days));
+        } else {
+            time_formats.push(format!("{} days", days));
+        }
     }
-    if hours > 0 {
-        time_formats.push(format!("{} hours", hours));
+    if hours > 0 && time_formats.len() < 2 {
+        if hours == 1 {
+            time_formats.push(format!("{} hour", hours));
+        } else {
+            time_formats.push(format!("{} hours", hours));
+        }
     }
-    if minutes > 0 {
-        time_formats.push(format!("{} minutes", minutes));
+    if minutes > 0 && time_formats.len() < 2 {
+        if minutes == 1 {
+            time_formats.push(format!("{} minute", minutes));
+        } else {
+            time_formats.push(format!("{} minutes", minutes));
+        }
     }
-    if seconds > 0 || time_formats.is_empty() {
-        time_formats.push(format!("{} seconds", seconds));
+    if (seconds > 0 || time_formats.is_empty()) && time_formats.len() < 2 {
+        if seconds == 0 {
+            time_formats.push(format!("{} second", seconds));
+        } else {
+            time_formats.push(format!("{} seconds", seconds));
+        }
     }
 
     time_formats.join(", ")
