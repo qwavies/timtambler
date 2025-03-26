@@ -3,6 +3,11 @@ use serde::Deserialize;
 use std::fs;
 use toml;
 
+pub enum ClassState {
+    InClass,
+    OutOfClass,
+}
+
 pub enum TimeState {
     Past,
     Future,
@@ -50,13 +55,23 @@ impl Timetable {
     pub fn list_classes(&self) -> Vec<String> {
         let mut output_classes: Vec<(String, i64)> = Vec::new();
         for class in &self.class {
-            let start_time_unix: i64 = next_occurance_of_day_time_unix(&class.day, &class.start_time);
+            let start_time_unix: i64 =
+                next_occurance_of_day_time_unix(&class.day, &class.start_time);
             let end_time_unix: i64 = next_occurance_of_day_time_unix(&class.day, &class.end_time);
 
-            let (format_string, in_class, relevant_time_unix) = if end_time_unix > start_time_unix {
-                (&self.format.in_class_format, false, end_time_unix)
+            let (format_string, in_class, relevant_time_unix) = if end_time_unix <= start_time_unix
+            {
+                (
+                    &self.format.in_class_format,
+                    ClassState::InClass,
+                    end_time_unix,
+                )
             } else {
-                (&self.format.next_class_format, true, start_time_unix)
+                (
+                    &self.format.next_class_format,
+                    ClassState::OutOfClass,
+                    start_time_unix,
+                )
             };
 
             let format_string = class.format_class_string(format_string.to_string(), in_class);
@@ -65,7 +80,7 @@ impl Timetable {
         output_classes.sort_by_key(|time| time.1);
         let output_classes: Vec<String> = output_classes
             .into_iter()
-            .map(|(formatted_string,_)| formatted_string)
+            .map(|(formatted_string, _)| formatted_string)
             .collect();
 
         output_classes
@@ -74,14 +89,15 @@ impl Timetable {
     pub fn list_assignments(&self) -> Vec<String> {
         let mut output_assignments: Vec<(String, i64)> = Vec::new();
         for assignment in &self.assignment {
-            let (time, time_unix, timestate) = assignment.get_time(&self.format.assignment_time_format);
+            let (time, time_unix, timestate) =
+                assignment.get_time(&self.format.assignment_time_format);
             let format_string = assignment.format_assignment_string(time, timestate, &self.format);
-            output_assignments.push((format_string,time_unix))
+            output_assignments.push((format_string, time_unix))
         }
         output_assignments.sort_by_key(|time| time.1);
         let output_assignments: Vec<String> = output_assignments
             .into_iter()
-            .map(|(formatted_string,_)| formatted_string)
+            .map(|(formatted_string, _)| formatted_string)
             .collect();
 
         output_assignments
@@ -110,11 +126,17 @@ impl Assignment {
         (formatted_time, due_date_unix, current_time_state)
     }
 
-    pub fn format_assignment_string(&self, time: String, timestate: TimeState, format: &Format) -> String {
+    pub fn format_assignment_string(
+        &self,
+        time: String,
+        timestate: TimeState,
+        format: &Format,
+    ) -> String {
         let format_string = match timestate {
             TimeState::Past => &format.assignment_overdue_format,
             TimeState::Future => &format.assignment_format,
-        }.replace("{name}", &self.name)
+        }
+        .replace("{name}", &self.name)
         .replace("{points}", &self.points)
         .replace("{due_date}", &self.due_date)
         .replace("{time}", &time);
@@ -138,11 +160,11 @@ impl Class {
         format_time(time_difference)
     }
 
-    pub fn format_class_string(&self, format_string: String, in_class: bool) -> String {
+    pub fn format_class_string(&self, format_string: String, in_class: ClassState) -> String {
         let time_format = match in_class {
-            true => &self.get_end_time(),
-            false => &self.get_start_time(),
-        }; 
+            ClassState::InClass => &self.get_end_time(),
+            ClassState::OutOfClass => &self.get_start_time(),
+        };
         format_string
             .replace("{name}", &self.name)
             .replace("{day}", &self.day)
@@ -158,11 +180,13 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
     let current_time_unix = current_time.timestamp();
     let current_hour_and_minutes: String = current_time.time().to_string();
     let current_hour_and_minutes: Vec<&str> = current_hour_and_minutes
-        .split(|delimiter| delimiter == ':' || delimiter == '.').collect();
+        .split(|delimiter| delimiter == ':' || delimiter == '.')
+        .collect();
     let current_hours: i64 = current_hour_and_minutes[0].parse().unwrap();
     let current_minutes: i64 = current_hour_and_minutes[1].parse().unwrap();
     let current_seconds: i64 = current_hour_and_minutes[2].parse().unwrap();
-    let current_total_seconds = (current_hours * 60 * 60) + (current_minutes * 60) + current_seconds;
+    let current_total_seconds =
+        (current_hours * 60 * 60) + (current_minutes * 60) + current_seconds;
     let current_weekday = match current_time.weekday() {
         Weekday::Mon => 0,
         Weekday::Tue => 1,
@@ -249,5 +273,5 @@ fn format_time(raw_seconds: i64) -> String {
         }
     }
 
-    time_formats.join(", ")
+    time_formats.join(" & ")
 }
