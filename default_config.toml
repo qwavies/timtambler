@@ -1,0 +1,42 @@
+# Not implemented yet but wanted to lay out a structure on how to format (eventually)
+# Taking inspiration from starship
+[format]
+in_class_format = "{name} in {time} at {location}"
+next_class_format = "currently in {name} until {time} at {location}"
+assignment_format = "{name} worth {points} due in {time}"
+assignment_overdue_format = "{name} worth {points} due {time} ago"
+assignment_time_format = "%Y-%m-%d %H:%M:%S"
+
+[[class]]
+name = "class 1"
+day = "Monday"
+start_time = "11:00"
+end_time = "14:00"
+location = "location 1"
+
+[[class]]
+name = "class 2"
+day = "Tuesday"
+start_time = "16:00"
+end_time = "18:00"
+location = "location 2"
+
+[[class]]
+name = "class 3"
+day = "Wednesday"
+start_time = "18:00"
+end_time = "20:00"
+location = "location 3"
+
+[[assignment]]
+name = "assignment 1"
+points = "10%"
+# Format is specifically called RFC 3339
+# or just look it up on toml.io
+#          YYYY-MM-DD HH:MM:SS
+due_date = "2025-03-28 23:55:00"
+
+[[assignment]]
+name = "assignment 2"
+points = "15%"
+due_date = "2025-03-28 23:55:00"

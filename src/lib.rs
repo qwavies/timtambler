@@ -1,7 +1,9 @@
 use chrono::{Datelike, Local, NaiveDateTime, Weekday};
 use serde::Deserialize;
-use std::fs;
+use std::{fs, path::PathBuf};
 use toml;
+
+pub mod generate_default_config;
 
 pub enum ClassState {
     InClass,
@@ -46,7 +48,7 @@ pub struct Timetable {
 }
 
 impl Timetable {
-    pub fn read_toml_file(file: &str) -> Timetable {
+    pub fn read_toml_file(file: PathBuf) -> Timetable {
         let content = fs::read_to_string(file).expect("Couldn't read toml file");
         let timetable: Timetable = toml::de::from_str(&content).expect("Couldn't parse toml file");
         timetable
