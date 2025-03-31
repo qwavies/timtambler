@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::{fs, path::PathBuf};
 use toml;
 
-pub mod generate_default_config;
+pub mod config;
 
 pub enum ClassState {
     InClass,
@@ -211,6 +211,13 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
         "friday" => 4,
         "saturday" => 5,
         "sunday" => 6,
+        "mon" => 0,
+        "tue" => 1,
+        "wed" => 2,
+        "thu" => 3,
+        "fri" => 4,
+        "sat" => 5,
+        "sun" => 6,
         _ => panic!(
             "Invalid day of the week. {} is not a day of the week",
             weekday

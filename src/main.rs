@@ -1,9 +1,5 @@
-use std::env;
-use std::path::PathBuf;
-use dirs::home_dir;
-
 use timtambler::Timetable;
-use timtambler::generate_default_config::generate_default_config;
+use timtambler::config::{get_config, generate_default_config};
 
 fn main() {
     let config_path = get_config();
@@ -25,28 +21,13 @@ fn main() {
     let timetable: Timetable = Timetable::read_toml_file(config_path);
 
     println!("Classes:");
-    for class in timetable.list_classes() {
+    for class in timetable.list_classes().iter().take(3) {
         println!("{}", class)
     }
 
     println!("Assignments:");
-    for assignment in timetable.list_assignments() {
+    for assignment in timetable.list_assignments().iter().take(4) {
         println!("{}", assignment)
     }
 }
 
-fn get_config() -> PathBuf {
-    let config_path: PathBuf = match env::var("TIMTAM_DIR") {
-        Ok(path) => {
-            PathBuf::from(path)
-        }
-        Err(_) => {
-            let mut default_path = home_dir().expect("No home directory found");
-            default_path.push(".config");
-            default_path.push("timtambler");
-            default_path.push("config.toml");
-            default_path
-        }
-    };
-    config_path
-}
