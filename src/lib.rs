@@ -237,7 +237,7 @@ fn next_occurance_of_day_time_unix(weekday: &String, time: &String) -> i64 {
     final_time_unix
 }
 
-fn format_time(raw_seconds: i64) -> String {
+pub fn format_time(raw_seconds: i64) -> String {
     let total_seconds = raw_seconds.abs();
     let weeks = total_seconds / (7 * 24 * 60 * 60);
     let days = (total_seconds % (7 * 24 * 60 * 60)) / (24 * 60 * 60);
@@ -275,7 +275,7 @@ fn format_time(raw_seconds: i64) -> String {
         }
     }
     if (seconds > 0 || time_formats.is_empty()) && time_formats.len() < 2 {
-        if seconds == 0 {
+        if seconds == 1 {
             time_formats.push(format!("{} second", seconds));
         } else {
             time_formats.push(format!("{} seconds", seconds));

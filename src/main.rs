@@ -15,7 +15,7 @@ fn main() {
                 panic!("Failed to generte a default config")
             }
         }
-        println!("Change the path of the timtambler by setting the \"TIMTAM_DIR\" environment variable")
+        println!("ChangE the path of the timtambler by setting the \"TIMTAM_DIR\" environment variable")
     }
 
     let timetable: Timetable = Timetable::read_toml_file(config_path);
