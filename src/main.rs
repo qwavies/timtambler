@@ -2,8 +2,10 @@ use timtambler::Timetable;
 use timtambler::config::{get_config, generate_default_config};
 
 fn main() {
+    // returns the TIMTAM_DIR environment variable or the default path
     let config_path = get_config();
 
+    // if there is no existing config file at the given path, then create one
     if !config_path.exists() {
         println!("No timtambler config detected");
         println!("Generating a scaffold config...");
@@ -15,7 +17,7 @@ fn main() {
                 panic!("Failed to generte a default config")
             }
         }
-        println!("ChangE the path of the timtambler by setting the \"TIMTAM_DIR\" environment variable")
+        println!("Change the path of the timtambler by setting the \"TIMTAM_DIR\" environment variable")
     }
 
     let timetable: Timetable = Timetable::read_toml_file(config_path);

@@ -12,7 +12,7 @@ pub fn get_config() -> PathBuf {
             PathBuf::from(path)
         }
         Err(_) => {
-            let mut default_path = home_dir().expect("No home directory found");
+            let mut default_path: PathBuf = home_dir().expect("No home directory found");
             default_path.push(".config");
             default_path.push("timtambler");
             default_path.push("config.toml");
